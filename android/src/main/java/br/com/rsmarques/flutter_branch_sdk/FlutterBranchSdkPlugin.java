@@ -587,9 +587,10 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     new Handler(Looper.getMainLooper()).post(new Runnable() {
       @Override
       public void run() {        
-        Branch.getAutoInstance(context).setRequestMetadata(key, value);               
-        Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
+        Branch.getAutoInstance(context).setRequestMetadata(key, value);    
+		Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
         FlutterBranchSdkPlugin.started = true;
+        Branch.sessionBuilder(this.activity).withCallback(branchReferralInitListener).reInit();
       }
     });
   }
