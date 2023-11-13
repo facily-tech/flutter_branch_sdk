@@ -52,6 +52,10 @@ class FlutterBranchSdk {
         .getShortUrl(buo: buo, linkProperties: linkProperties);
   }
 
+  static Future<BranchResponse> getDeeplinkOnError() async {
+    return FlutterBranchSdkPlatform.instance.getDeeplinkOnError();
+  }
+
   ///Showing a Share Sheet
   static Future<BranchResponse> showShareSheet(
       {required BranchUniversalObject buo,

@@ -56,6 +56,8 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
 
   private final FlutterBranchSdkHelper branchSdkHelper = new FlutterBranchSdkHelper();
 
+  private static String deeplink = "";
+
   /**
    * ---------------------------------------------------------------------------------------------
    * Plugin registry
@@ -90,6 +92,9 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
   private void setActivity(Activity activity) {
     LogUtils.debug(DEBUG_NAME, "setActivity call");
     this.activity = activity;
+    if (activity.getIntent() != null && activity.getIntent().getData() != null ) {
+      deeplink =  activity.getIntent().getData().toString();
+    }
     activity.getApplication().registerActivityLifecycleCallbacks(this);
 
     if (this.activity != null && FlutterFragmentActivity.class.isAssignableFrom(activity.getClass())) {
@@ -219,6 +224,9 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
       return false;
     }
     Intent newIntent = intent;
+
+    deeplink = newIntent.getData() != null ? newIntent.getData().toString() : deeplink;
+
     if (!intent.hasExtra("branch_force_new_session")) {
       newIntent.putExtra("branch_force_new_session",true);
     }
@@ -236,6 +244,9 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result rawResult) {
     Result result = new MethodResultWrapper(rawResult);
     switch (call.method) {
+      case "getDeeplinkOnError":
+        getDeeplinkOnError(call, result);
+        break;
       case "getShortUrl":
         getShortUrl(call, result);
         break;
@@ -364,6 +375,12 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
 
   private void validateSDKIntegration() {
     IntegrationValidator.validate(activity);
+  }
+
+  private void getDeeplinkOnError(MethodCall call, final Result result) {
+    String deeplinkTemp = deeplink;
+    deeplink = "";
+    result.success(deeplinkTemp);
   }
 
   private void getShortUrl(MethodCall call, final Result result) {
@@ -791,6 +808,7 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     HashMap<String, Object> argsMap = (HashMap<String, Object>) call.arguments;
 
     final String url = call.argument("url");
+    deeplink = url;
 
     Intent intent = new Intent(context, activity.getClass());
     intent.putExtra("branch",url);
