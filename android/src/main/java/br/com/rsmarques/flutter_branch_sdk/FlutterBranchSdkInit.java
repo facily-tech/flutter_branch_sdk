@@ -13,8 +13,6 @@ public class FlutterBranchSdkInit {
     public static void init(Context context) {
         ApplicationInfoHelper applicationInfoHelper = new ApplicationInfoHelper(context);
 
-        Branch.expectDelayedSessionInitialization(true);
-
         if (applicationInfoHelper.getEnableLog()) {
             LogUtils.debug(DEBUG_NAME, "Branch SDK with log enable");
             Branch.enableLogging();
@@ -23,11 +21,11 @@ public class FlutterBranchSdkInit {
         }
 
         if (applicationInfoHelper.getEnableFacebookAds()) {
-             Branch.getAutoInstance(context).enableFacebookAppLinkCheck();
+            Branch.getAutoInstance(context).enableFacebookAppLinkCheck();
         }
 
         // Branch object initialization
         Branch.registerPlugin(PLUGIN_NAME, PLUGIN_VERSION);
-//         Branch.getAutoInstance(context);
+        Branch.getAutoInstance(context);
     }
 }

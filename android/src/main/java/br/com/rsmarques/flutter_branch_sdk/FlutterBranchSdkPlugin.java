@@ -47,8 +47,6 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
   private Activity activity;
   private Context context;
   private ActivityPluginBinding activityPluginBinding;
-  private static boolean started = false;
-
 
   private static final String MESSAGE_CHANNEL = "flutter_branch_sdk/message";
   private static final String EVENT_CHANNEL = "flutter_branch_sdk/event";
@@ -94,10 +92,8 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     this.activity = activity;
     activity.getApplication().registerActivityLifecycleCallbacks(this);
 
-    if (this.activity != null && FlutterFragmentActivity.class.isAssignableFrom(activity.getClass())) {      
-      if(this.started){
-        Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
-      }      
+    if (this.activity != null && FlutterFragmentActivity.class.isAssignableFrom(activity.getClass())) {
+      Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
     }
   }
 
@@ -150,7 +146,7 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     LogUtils.debug(DEBUG_NAME, "onListen call");
     this.eventSink = new MainThreadEventSink(eventSink);
     if (initialParams != null) {
-      eventSink.success(initialParams);      
+      eventSink.success(initialParams);
       initialParams = null;
       initialError = null;
     } else if (initialError != null) {
@@ -179,20 +175,16 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
 
   @Override
   public void onActivityStarted(Activity activity) {
-    LogUtils.debug(DEBUG_NAME, "onActivityStarted call");    
-      if(this.started){
-        Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
-      } 
-    
+    LogUtils.debug(DEBUG_NAME, "onActivityStarted call");
+    Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
   }
 
   @Override
   public void onActivityResumed(Activity activity) {
-
   }
 
   @Override
-  public void onActivityPaused(Activity activity) {    
+  public void onActivityPaused(Activity activity) {
   }
 
   @Override
@@ -231,15 +223,8 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
       newIntent.putExtra("branch_force_new_session",true);
     }
     this.activity.setIntent(newIntent);
-    if(this.started){
-      Branch.sessionBuilder(this.activity).withCallback(branchReferralInitListener).reInit();  
-      return true;
-    } else {
-      Branch.getAutoInstance(context);
-      Branch.sessionBuilder(this.activity).withCallback(branchReferralInitListener).reInit();  
-      return true;
-    }
-    
+    Branch.sessionBuilder(this.activity).withCallback(branchReferralInitListener).reInit();
+    return true;
   }
 
   /**
@@ -575,21 +560,18 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     });
   }
 
-  private void setRequestMetadata(MethodCall call) {    
-    
-    
+  private void setRequestMetadata(MethodCall call) {
     LogUtils.debug(DEBUG_NAME, "setRequestMetadata call");
     if (!(call.arguments instanceof Map)) {
       throw new IllegalArgumentException("Map argument expected");
     }
     final String key = call.argument("key");
-    final String value = call.argument("value");    
+    final String value = call.argument("value");
+
     new Handler(Looper.getMainLooper()).post(new Runnable() {
       @Override
-      public void run() {        
-        Branch.getAutoInstance(context).setRequestMetadata(key, value);               
-        Branch.sessionBuilder(activity).withCallback(branchReferralInitListener).withData(activity.getIntent().getData()).init();
-        FlutterBranchSdkPlugin.started = true;
+      public void run() {
+        Branch.getAutoInstance(context).setRequestMetadata(key, value);
       }
     });
   }
