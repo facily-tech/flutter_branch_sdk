@@ -236,6 +236,7 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
 
         if (!intent.hasExtra("branch_force_new_session")) {
             newIntent.putExtra("branch_force_new_session", true);
+        }
         this.activity.setIntent(intent);
         if (intent.hasExtra("branch_force_new_session") && intent.getBooleanExtra("branch_force_new_session",false)) {
             Branch.sessionBuilder(this.activity).withCallback(branchReferralInitListener).reInit();
