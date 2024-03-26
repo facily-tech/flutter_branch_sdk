@@ -35,7 +35,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
     var requestMetadata : [String: String] = [:]
     var facebookParameters : [String: String] = [:]
     var snapParameters : [String: String] = [:]
-        
+    
     //---------------------------------------------------------------------------------------------
     // Plugin registry
     // --------------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
             break
         case "setRequestMetadata":
             setRequestMetadata(call: call);
-            break;
+            break
         case "logout":
             logout()
             break
@@ -224,6 +224,9 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
         case "addSnapPartnerParameter" :
             addSnapPartnerParameter(call: call)
             break
+        case "setDMAParamsForEEA":
+            setDMAParamsForEEA(call: call)
+            break;
         default:
             result(FlutterMethodNotImplemented)
             break
@@ -238,13 +241,13 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
         if let _ = branch {
             result(true)
         }
-
+        
         let args = call.arguments as! [String: Any?]
-
+        
 #if DEBUG
         NSLog("setupBranch args: %@", args)
 #endif
-
+        
         if args["useTestKey"] as! Bool == true {
             Branch.setUseTestBranchKey(true)
         }
@@ -256,7 +259,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
         branch = Branch.getInstance()
         
         branch!.registerPluginName(PLUGIN_NAME, version:  args["version"] as! String)
-                
+        
 #if DEBUG
         if args["enableLogging"] as! Bool == true {
             branch!.enableLogging()
@@ -267,7 +270,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
         if #available(iOS 15, *) {
             branch!.checkPasteboardOnInstall()
         }
-                
+        
         if (!requestMetadata.isEmpty) {
             for param in requestMetadata {
                 Branch.getInstance().setRequestMetadataKey(param.key, value: param.value)
@@ -283,7 +286,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
                 Branch.getInstance().addFacebookPartnerParameter(withName: param.key, value: param.value)
             }
         }
-
+        
         branch!.initSession(launchOptions: initialLaunchOptions) { (params, error) in
             if error == nil {
                 print("Branch InitSession params: \(String(describing: params as? [String: Any]))")
@@ -500,7 +503,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
             }
             return;
         }
-
+        
         DispatchQueue.main.async {
             self.branch!.setRequestMetadataKey(key, value: value)
         }
@@ -564,7 +567,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
             }
         }
     }
-
+    
     private func isUserIdentified(result: @escaping FlutterResult) {
         DispatchQueue.main.async {
             result(self.branch!.isUserIdentified())
@@ -676,7 +679,7 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
             Branch.getInstance().addFacebookPartnerParameter(withName: key, value:value)
         }
     }
-
+    
     private func addSnapPartnerParameter(call: FlutterMethodCall) {
         let args = call.arguments as! [String: Any?]
         let key = args["key"] as! String
@@ -690,16 +693,27 @@ public class SwiftFlutterBranchSdkPlugin: NSObject, FlutterPlugin, FlutterStream
             }
             return;
         }
-
+        
         DispatchQueue.main.async {
             Branch.getInstance().addSnapPartnerParameter(withName: key, value:value)
         }
     }
-
+    
     private func setPreinstallCampaign(call: FlutterMethodCall) {
     }
     
     private func setPreinstallPartner(call: FlutterMethodCall) {
+    }
+    
+    private func setDMAParamsForEEA(call: FlutterMethodCall) {
+        let args = call.arguments as! [String: Any?]
+        let eeaRegion = args["eeaRegion"] as! Bool
+        let adPersonalizationConsent = args["adPersonalizationConsent"]  as! Bool
+        let adUserDataUsageConsent = args["adUserDataUsageConsent"] as! Bool
+        
+        DispatchQueue.main.async {
+            Branch.setDMAParamsForEEA(eeaRegion,adPersonalizationConsent: adPersonalizationConsent, adUserDataUsageConsent: adUserDataUsageConsent)
+        }
     }
     
     

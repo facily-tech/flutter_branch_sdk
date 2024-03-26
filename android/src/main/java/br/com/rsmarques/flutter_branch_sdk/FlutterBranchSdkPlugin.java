@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -184,6 +185,11 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
     public void onActivityStarted(@NonNull Activity activity) {
         LogUtils.debug(DEBUG_NAME, "triggered onActivityStarted");
         if (!isInitialized) {
+            // Delay session initialization
+            Branch.expectDelayedSessionInitialization(true);
+            return;
+        }
+        if (this.activity != activity) {
             return;
         }
         LogUtils.debug(DEBUG_NAME, "triggered SessionBuilder init");
@@ -342,6 +348,9 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
             case "addSnapPartnerParameter":
                 addSnapPartnerParameter(call);
                 break;
+            case "setDMAParamsForEEA":
+                setDMAParamsForEEA(call);
+                break;
             default:
                 result.notImplemented();
                 break;
@@ -390,6 +399,7 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
         if (isInitialized) {
             result.success(Boolean.TRUE);
         }
+
         HashMap<String, Object> argsMap = (HashMap<String, Object>) call.arguments;
         if ((Boolean) argsMap.get("useTestKey")) {
             Branch.enableTestMode();
@@ -449,6 +459,13 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
             Branch.getInstance().disableTracking(true);
         }
         isInitialized = true;
+
+        if (this.activity == null) {
+            initialIntent = null;
+            result.success(Boolean.TRUE);
+            return;
+        }
+
         if (initialIntent == null) {
             initialIntent = new Intent(this.context, this.activity.getClass());
             initialIntent.setAction(Intent.ACTION_MAIN);
@@ -508,45 +525,72 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
         String messageTitle = (String) argsMap.get("messageTitle");
         String sharingTitle = (String) argsMap.get("sharingTitle");
         final Map<String, Object> response = new HashMap<>();
-        ShareSheetStyle shareSheetStyle = new ShareSheetStyle(activity, messageTitle, messageText)
-                .setAsFullWidthStyle(true)
-                .setSharingTitle(sharingTitle);
-        buo.showShareSheet(activity,
-                linkProperties,
-                shareSheetStyle,
-                new Branch.ExtendedBranchLinkShareListener() {
-                    @Override
-                    public void onShareLinkDialogLaunched() {
-                    }
 
-                    @Override
-                    public void onShareLinkDialogDismissed() {
-                    }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
 
-                    @Override
-                    public void onLinkShareResponse(String sharedLink, String sharedChannel, BranchError error) {
-                        if (error == null) {
-                            LogUtils.debug(DEBUG_NAME, "Branch link share: " + sharedLink);
-                            response.put("success", Boolean.TRUE);
-                            response.put("url", sharedLink);
-                        } else {
-                            response.put("success", Boolean.FALSE);
-                            response.put("errorCode", String.valueOf(error.getErrorCode()));
-                            response.put("errorMessage", error.getMessage());
+            Branch.getInstance().share(activity, buo, linkProperties, new Branch.BranchNativeLinkShareListener() {
+                        @Override
+                        public void onLinkShareResponse(String sharedLink, BranchError error) {
+                            if (error == null) {
+                                LogUtils.debug(DEBUG_NAME, "Branch link share: " + sharedLink);
+                                response.put("success", Boolean.TRUE);
+                                response.put("url", sharedLink);
+                            } else {
+                                response.put("success", Boolean.FALSE);
+                                response.put("errorCode", String.valueOf(error.getErrorCode()));
+                                response.put("errorMessage", error.getMessage());
+                            }
+                            result.success(response);
                         }
-                        result.success(response);
-                    }
+                        @Override
+                        public void onChannelSelected(String channelName) {
+                            LogUtils.debug(DEBUG_NAME, "Branch link share channel: " + channelName);
+                        }
+                    },
+                    messageTitle,
+                    messageText);
+        } else {
+            ShareSheetStyle shareSheetStyle = new ShareSheetStyle(activity, messageTitle, messageText)
+                    .setAsFullWidthStyle(true)
+                    .setSharingTitle(sharingTitle);
 
-                    @Override
-                    public void onChannelSelected(String channelName) {
+            buo.showShareSheet(activity,
+                    linkProperties,
+                    shareSheetStyle,
+                    new Branch.ExtendedBranchLinkShareListener() {
+                        @Override
+                        public void onShareLinkDialogLaunched() {
+                        }
 
-                    }
+                        @Override
+                        public void onShareLinkDialogDismissed() {
+                        }
 
-                    @Override
-                    public boolean onChannelSelected(String channelName, BranchUniversalObject buo, LinkProperties linkProperties) {
-                        return false;
-                    }
-                });
+                        @Override
+                        public void onLinkShareResponse(String sharedLink, String sharedChannel, BranchError error) {
+                            if (error == null) {
+                                LogUtils.debug(DEBUG_NAME, "Branch link share: " + sharedLink);
+                                response.put("success", Boolean.TRUE);
+                                response.put("url", sharedLink);
+                            } else {
+                                response.put("success", Boolean.FALSE);
+                                response.put("errorCode", String.valueOf(error.getErrorCode()));
+                                response.put("errorMessage", error.getMessage());
+                            }
+                            result.success(response);
+                        }
+
+                        @Override
+                        public void onChannelSelected(String channelName) {
+
+                        }
+
+                        @Override
+                        public boolean onChannelSelected(String channelName, BranchUniversalObject buo, LinkProperties linkProperties) {
+                            return false;
+                        }
+                    });
+        }
     }
 
     private void registerView(MethodCall call) {
@@ -974,6 +1018,18 @@ public class FlutterBranchSdkPlugin implements FlutterPlugin, MethodCallHandler,
                 Branch.getAutoInstance(context).addSnapPartnerParameterWithName(key, value);
             }
         });
+    }
+
+    private void setDMAParamsForEEA(MethodCall call) {
+        LogUtils.debug(DEBUG_NAME, "triggered setDMAParamsForEEA");
+        if (!(call.arguments instanceof Map)) {
+            throw new IllegalArgumentException("Map argument expected");
+        }
+        final boolean eeaRegion = Boolean.TRUE.equals(call.argument("eeaRegion"));
+        final boolean adPersonalizationConsent = Boolean.TRUE.equals(call.argument("adPersonalizationConsent"));
+        final boolean adUserDataUsageConsent = Boolean.TRUE.equals(call.argument("adUserDataUsageConsent"));
+
+        Branch.getInstance().setDMAParamsForEEA(eeaRegion,adPersonalizationConsent,adUserDataUsageConsent);
     }
 }
 
